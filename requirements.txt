@@ -1,0 +1,4 @@
+aiogram>=3.7,<4
+python-dotenv>=1.0,<2
+PyYAML>=6.0,<7
+supabase>=2.5,<3
