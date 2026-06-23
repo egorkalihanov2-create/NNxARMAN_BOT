@@ -37,15 +37,21 @@ async def run_blocking(func, *args):
     return await asyncio.to_thread(func, *args)
 
 
-async def send_segment(message: Message, segment_id: str, clear_keyboard: bool = False) -> None:
+async def send_segment(
+    message: Message,
+    segment_id: str,
+    clear_keyboard: bool = False,
+    player_id: int | None = None,
+) -> None:
     segment = story.segment(segment_id)
     act_id = segment["act"]
     interaction = segment.get("interaction", {})
+    telegram_id = player_id or message.from_user.id
 
-    await run_blocking(store.set_current_segment, message.from_user.id, act_id, segment_id)
-    await run_blocking(store.log_event, message.from_user.id, "segment_opened", act_id, segment_id)
+    await run_blocking(store.set_current_segment, telegram_id, act_id, segment_id)
+    await run_blocking(store.log_event, telegram_id, "segment_opened", act_id, segment_id)
 
-    variables = await run_blocking(store.get_state, message.from_user.id)
+    variables = await run_blocking(store.get_state, telegram_id)
     rendered_messages = render_segment_messages(segment, story.characters, variables)
     await bot.send_chat_action(message.chat.id, ChatAction.TYPING)
     await asyncio.sleep(min(max(sum(len(item) for item in rendered_messages) / 700, 0.4), 2.2))
@@ -127,7 +133,7 @@ async def process_choice(callback: CallbackQuery) -> None:
         {"choice_id": choice_id, "label": choice.get("label")},
     )
 
-    await send_segment(callback.message, choice["target"])
+    await send_segment(callback.message, choice["target"], player_id=callback.from_user.id)
 
 
 @dp.message(F.text)
