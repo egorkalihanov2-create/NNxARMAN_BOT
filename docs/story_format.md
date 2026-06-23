@@ -124,10 +124,18 @@ text: "приятно познакомиться, {player_name}."
 ```yaml
 characters:
   clerk:
-    emoji_ids:
+    intro_emoji_ids:
       - "custom_emoji_id_1"
       - "custom_emoji_id_2"
       - "custom_emoji_id_3"
+      - "custom_emoji_id_4"
+      - "custom_emoji_id_5"
+      - "custom_emoji_id_6"
+      - "custom_emoji_id_7"
+      - "custom_emoji_id_8"
+      - "custom_emoji_id_9"
+    compact_emoji_id: "single_custom_emoji_id"
 ```
 
-Если в наборе меньше 9 emoji, рендерер повторит их до нужного количества.
+Если в `intro_emoji_ids` меньше 9 emoji, рендерер повторит их до нужного количества.
+Для `compact` используется `compact_emoji_id`.
