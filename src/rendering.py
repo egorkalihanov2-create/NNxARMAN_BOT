@@ -54,11 +54,17 @@ def render_character_message(
 ) -> str:
     variables = variables or {}
     character = characters.get(message.get("character"), {})
-    emoji_ids = message.get("emoji_ids") or character.get("emoji_ids") or DEFAULT_CUSTOM_EMOJI_IDS
     variant = message.get("variant", "compact")
     text = apply_template(message.get("text", ""), variables)
 
     if variant in {"intro", "first"}:
+        emoji_ids = (
+            message.get("intro_emoji_ids")
+            or message.get("emoji_ids")
+            or character.get("intro_emoji_ids")
+            or character.get("emoji_ids")
+            or DEFAULT_CUSTOM_EMOJI_IDS
+        )
         return render_character_intro(
             emoji_ids=emoji_ids,
             label=apply_template(message.get("label", ""), variables),
@@ -66,8 +72,13 @@ def render_character_message(
         )
 
     if variant == "compact":
+        emoji_id = (
+            message.get("compact_emoji_id")
+            or character.get("compact_emoji_id")
+            or next(iter(character.get("emoji_ids", [])), DEFAULT_CUSTOM_EMOJI_IDS[0])
+        )
         return render_character_compact(
-            emoji_id=next(iter(emoji_ids), DEFAULT_CUSTOM_EMOJI_IDS[0]),
+            emoji_id=emoji_id,
             text=text,
         )
 
