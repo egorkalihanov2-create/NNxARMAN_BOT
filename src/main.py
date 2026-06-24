@@ -8,10 +8,10 @@ from pathlib import PurePosixPath
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.enums import ChatAction, ParseMode
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
-from aiogram.exceptions import TelegramBadRequest
 
 from src.config import load_settings
 from src.content import load_story, normalize_answer, normalize_digits
@@ -38,8 +38,16 @@ async def run_blocking(func, *args):
     return await asyncio.to_thread(func, *args)
 
 
+async def delete_message_safely(chat_id: int, message_id: int) -> None:
+    try:
+        await bot.delete_message(chat_id=chat_id, message_id=message_id)
+    except TelegramBadRequest:
+        pass
+
+
 async def delete_tracked_messages(messages: list[dict]) -> None:
     seen: set[tuple[int, int]] = set()
+    tasks = []
     for item in messages:
         chat_id = item.get("chat_id")
         message_id = item.get("message_id")
@@ -50,11 +58,10 @@ async def delete_tracked_messages(messages: list[dict]) -> None:
         if key in seen:
             continue
         seen.add(key)
+        tasks.append(delete_message_safely(chat_id=key[0], message_id=key[1]))
 
-        try:
-            await bot.delete_message(chat_id=key[0], message_id=key[1])
-        except TelegramBadRequest:
-            continue
+    if tasks:
+        await asyncio.gather(*tasks)
 
 
 async def send_segment(
@@ -86,11 +93,9 @@ async def send_segment(
         and segment.get("cleanup_previous", True)
     )
 
+    cleanup_messages: list[dict] = []
     if should_cleanup:
         cleanup_messages = active_messages.copy()
-        if trigger_message:
-            cleanup_messages.append(trigger_message)
-        await delete_tracked_messages(cleanup_messages)
         active_messages = []
     elif trigger_message:
         active_messages.append(trigger_message)
@@ -119,6 +124,9 @@ async def send_segment(
             reply_markup=message_reply_markup,
         )
         active_messages.append({"chat_id": sent_message.chat.id, "message_id": sent_message.message_id})
+
+    if should_cleanup:
+        await delete_tracked_messages(cleanup_messages)
 
     await run_blocking(
         store.update_vars,
@@ -170,7 +178,7 @@ async def ensure_player(message: Message) -> None:
 async def start(message: Message) -> None:
     await run_blocking(store.upsert_player, message.from_user, story.start_segment)
     await run_blocking(store.log_event, message.from_user.id, "game_started")
-    await send_segment(message, story.start_segment, trigger_message_id=message.message_id, force_cleanup=True)
+    await send_segment(message, story.start_segment, force_cleanup=True)
 
 
 @dp.callback_query(F.data.startswith("choice:"))
