@@ -78,6 +78,44 @@ interaction:
       target: act1_who_are_you
 ```
 
+## Мини-сегменты и очистка чата
+
+Технических сегментов внутри одного экрана может быть несколько. Чтобы они не стирали друг друга, им задается одинаковый `mini_segment`:
+
+```yaml
+act1_checkup:
+  act: act_1
+  mini_segment: act1_02
+  messages:
+    - type: character
+      character: masha
+      variant: intro
+      label: "маша"
+      text: "с вами все нормально?"
+
+act1_repeat_numbers:
+  act: act_1
+  mini_segment: act1_02
+  messages:
+    - type: character
+      character: masha
+      variant: compact
+      text: "так, повторяйте за мной: 1, 2, 3"
+```
+
+Когда следующий сегмент имеет другой `mini_segment`, бот удаляет сообщения предыдущего мини-сегмента и показывает новый блок.
+
+## Автопереход и пауза
+
+Для паузы без кнопки используется `auto`:
+
+```yaml
+interaction:
+  type: auto
+  delay_seconds: 5
+  target: next_segment
+```
+
 ## Проверка текстового ввода
 
 Обычная проверка:
