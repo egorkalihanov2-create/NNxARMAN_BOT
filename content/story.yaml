@@ -39,16 +39,16 @@ characters:
     compact_emoji_id: "5321314765774037489"
   boy:
     intro_emoji_ids:
-      - "5321031830508448296"
-      - "5321456538349511862"
-      - "5321293166383505096"
-      - "5321460515489226031"
-      - "5321302988973713224"
-      - "5321006941172967207"
-      - "5321540139887927677"
-      - "5321320061468712842"
-      - "5321455967118861160"
-    compact_emoji_id: "5321032693796876280"
+      - "5323361923280968128"
+      - "5321184250307845127"
+      - "5323530822869885698"
+      - "5323510885631697183"
+      - "5321557117893648362"
+      - "5323607518100889532"
+      - "5321162650917314251"
+      - "5323495432339364791"
+      - "5323576405357798297"
+    compact_emoji_id: "5321103152735362831"
 
 acts:
   act_1:
@@ -201,6 +201,8 @@ segments:
         character: masha
         variant: compact
         text: "спасибо тебе! он привязывается ко мне по любому поводу... меня маша зовут, а тебя?"
+      - type: text
+        text: "<i>напиши свое имя в чат</i>"
     interaction:
       type: capture_text
       variable: player_name
@@ -336,7 +338,7 @@ segments:
       - type: text
         text: "<i>вы замечаете мальчишку, забившегося в угол от страха</i>"
     interaction:
-      type: reply_choice
+      type: choice
       choices:
         - id: talk_to_boy
           label: "заговорить с мальчиком"
@@ -347,15 +349,15 @@ segments:
     mini_segment: act1_09
     render_mode: html
     messages:
-      - type: text
-        text: "{player_name} - ты чего там?"
+      - type: player_line
+        text: "ты чего там?"
       - type: character
         character: boy
         variant: intro
         label: "???"
         text: "а? я? я? я последний!"
     interaction:
-      type: reply_choice
+      type: choice
       choices:
         - id: ask_why
           label: "да я не спрашивал"
@@ -366,8 +368,8 @@ segments:
     mini_segment: act1_09
     render_mode: html
     messages:
-      - type: text
-        text: "{player_name} - да я не спрашивал... ты чего трясешься?"
+      - type: player_line
+        text: "да я не спрашивал... ты чего трясешься?"
     interaction:
       type: auto
       delay_seconds: 1
@@ -382,15 +384,15 @@ segments:
         character: boy
         variant: compact
         text: "мой... зин... он совсем порвался! он расклеился и все странички рассыпались! мне... мне нужен реабилитолог! мне нужно залечить мой зин!"
-      - type: text
-        text: "{player_name} - эту книжку что ли?"
+      - type: player_line
+        text: "эту книжку что ли?"
       - type: character
         character: boy
         variant: compact
         text: "это совсем-совсем не книжка! в книжках пишут о всяких героях, злодеях... а зин! зин он про меня! смотри, здесь есть все: вот страничка про мои любимые машины! вот про футболистов! вот сюда я вклеил несколько цветов, их любит моя сестра! зин - это совсем не книжка!"
     interaction:
       type: auto
-      delay_seconds: 2
+      delay_seconds: 7
       target: act1_boy_teach
 
   act1_boy_teach:
@@ -398,8 +400,8 @@ segments:
     mini_segment: act1_11
     render_mode: html
     messages:
-      - type: text
-        text: "{player_name} - ты его сам собрал? научишь?"
+      - type: player_line
+        text: "ты его сам собрал? научишь?"
       - type: character
         character: boy
         variant: compact
