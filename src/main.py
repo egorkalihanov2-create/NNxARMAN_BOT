@@ -11,6 +11,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ChatAction, ParseMode
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
+from aiogram.exceptions import TelegramBadRequest
 
 from src.config import load_settings
 from src.content import load_story, normalize_answer, normalize_digits
@@ -37,21 +38,66 @@ async def run_blocking(func, *args):
     return await asyncio.to_thread(func, *args)
 
 
+async def delete_tracked_messages(messages: list[dict]) -> None:
+    seen: set[tuple[int, int]] = set()
+    for item in messages:
+        chat_id = item.get("chat_id")
+        message_id = item.get("message_id")
+        if not chat_id or not message_id:
+            continue
+
+        key = (int(chat_id), int(message_id))
+        if key in seen:
+            continue
+        seen.add(key)
+
+        try:
+            await bot.delete_message(chat_id=key[0], message_id=key[1])
+        except TelegramBadRequest:
+            continue
+
+
 async def send_segment(
     message: Message,
     segment_id: str,
     clear_keyboard: bool = False,
     player_id: int | None = None,
+    trigger_message_id: int | None = None,
+    force_cleanup: bool = False,
 ) -> None:
     segment = story.segment(segment_id)
     act_id = segment["act"]
     interaction = segment.get("interaction", {})
     telegram_id = player_id or message.from_user.id
+    mini_segment_id = segment.get("mini_segment", segment_id)
+
+    variables = await run_blocking(store.get_state, telegram_id)
+    active_messages = list(variables.get("_active_messages", []))
+    previous_mini_segment_id = variables.get("_active_mini_segment")
+    trigger_message = (
+        {"chat_id": message.chat.id, "message_id": trigger_message_id}
+        if trigger_message_id
+        else None
+    )
+
+    should_cleanup = force_cleanup or (
+        previous_mini_segment_id is not None
+        and previous_mini_segment_id != mini_segment_id
+        and segment.get("cleanup_previous", True)
+    )
+
+    if should_cleanup:
+        cleanup_messages = active_messages.copy()
+        if trigger_message:
+            cleanup_messages.append(trigger_message)
+        await delete_tracked_messages(cleanup_messages)
+        active_messages = []
+    elif trigger_message:
+        active_messages.append(trigger_message)
 
     await run_blocking(store.set_current_segment, telegram_id, act_id, segment_id)
     await run_blocking(store.log_event, telegram_id, "segment_opened", act_id, segment_id)
 
-    variables = await run_blocking(store.get_state, telegram_id)
     rendered_messages = render_segment_messages(segment, story.characters, variables)
     await bot.send_chat_action(message.chat.id, ChatAction.TYPING)
     await asyncio.sleep(min(max(sum(len(item) for item in rendered_messages) / 700, 0.4), 2.2))
@@ -68,10 +114,24 @@ async def send_segment(
         if clear_keyboard and index == 0 and message_reply_markup is None:
             message_reply_markup = ReplyKeyboardRemove()
 
-        await message.answer(
+        sent_message = await message.answer(
             rendered_message,
             reply_markup=message_reply_markup,
         )
+        active_messages.append({"chat_id": sent_message.chat.id, "message_id": sent_message.message_id})
+
+    await run_blocking(
+        store.update_vars,
+        telegram_id,
+        {
+            "_active_mini_segment": mini_segment_id,
+            "_active_messages": active_messages,
+        },
+    )
+
+    if interaction.get("type") == "auto":
+        await asyncio.sleep(float(interaction.get("delay_seconds", 0)))
+        await send_segment(message, interaction["target"], player_id=telegram_id)
 
 
 def find_choice(segment: dict, choice_id: str) -> dict | None:
@@ -110,7 +170,7 @@ async def ensure_player(message: Message) -> None:
 async def start(message: Message) -> None:
     await run_blocking(store.upsert_player, message.from_user, story.start_segment)
     await run_blocking(store.log_event, message.from_user.id, "game_started")
-    await send_segment(message, story.start_segment)
+    await send_segment(message, story.start_segment, trigger_message_id=message.message_id, force_cleanup=True)
 
 
 @dp.callback_query(F.data.startswith("choice:"))
@@ -158,7 +218,7 @@ async def process_text(message: Message) -> None:
             segment_id,
             {"text": message.text, "choice_id": choice.get("id")},
         )
-        await send_segment(message, choice["target"], clear_keyboard=True)
+        await send_segment(message, choice["target"], clear_keyboard=True, trigger_message_id=message.message_id)
         return
 
     if interaction.get("type") == "capture_text":
@@ -173,7 +233,7 @@ async def process_text(message: Message) -> None:
             segment_id,
             {"variable": variable_name, "value": value},
         )
-        await send_segment(message, interaction["target"])
+        await send_segment(message, interaction["target"], trigger_message_id=message.message_id)
         return
 
     if interaction.get("type") != "text_input":
@@ -196,7 +256,7 @@ async def process_text(message: Message) -> None:
     if not is_correct and interaction.get("wrong_text"):
         await message.answer(escape(interaction["wrong_text"]))
 
-    await send_segment(message, target)
+    await send_segment(message, target, trigger_message_id=message.message_id)
 
 
 @dp.message(F.photo | F.document)
@@ -299,7 +359,7 @@ async def process_upload(message: Message) -> None:
     )
 
     await message.answer("Файл принят и сохранен.")
-    await send_segment(message, interaction["on_success"])
+    await send_segment(message, interaction["on_success"], trigger_message_id=message.message_id)
 
 
 @dp.message()
