@@ -46,8 +46,9 @@ async def delete_message_safely(chat_id: int, message_id: int) -> None:
 
 
 async def delete_tracked_messages(messages: list[dict]) -> None:
+    message_ids_by_chat: dict[int, list[int]] = {}
     seen: set[tuple[int, int]] = set()
-    tasks = []
+
     for item in messages:
         chat_id = item.get("chat_id")
         message_id = item.get("message_id")
@@ -58,10 +59,27 @@ async def delete_tracked_messages(messages: list[dict]) -> None:
         if key in seen:
             continue
         seen.add(key)
-        tasks.append(delete_message_safely(chat_id=key[0], message_id=key[1]))
+        message_ids_by_chat.setdefault(key[0], []).append(key[1])
 
-    if tasks:
-        await asyncio.gather(*tasks)
+    fallback_tasks = []
+    for chat_id, message_ids in message_ids_by_chat.items():
+        for offset in range(0, len(message_ids), 100):
+            chunk = message_ids[offset : offset + 100]
+            try:
+                await bot.delete_messages(chat_id=chat_id, message_ids=chunk)
+            except AttributeError:
+                fallback_tasks.extend(
+                    delete_message_safely(chat_id=chat_id, message_id=message_id)
+                    for message_id in chunk
+                )
+            except TelegramBadRequest:
+                fallback_tasks.extend(
+                    delete_message_safely(chat_id=chat_id, message_id=message_id)
+                    for message_id in chunk
+                )
+
+    if fallback_tasks:
+        await asyncio.gather(*fallback_tasks)
 
 
 async def send_segment(
@@ -96,16 +114,20 @@ async def send_segment(
     cleanup_messages: list[dict] = []
     if should_cleanup:
         cleanup_messages = active_messages.copy()
+        if trigger_message:
+            cleanup_messages.append(trigger_message)
         active_messages = []
     elif trigger_message:
         active_messages.append(trigger_message)
+
+    if should_cleanup:
+        await delete_tracked_messages(cleanup_messages)
+        await asyncio.sleep(float(segment.get("after_cleanup_delay_seconds", 0.6)))
 
     await run_blocking(store.set_current_segment, telegram_id, act_id, segment_id)
     await run_blocking(store.log_event, telegram_id, "segment_opened", act_id, segment_id)
 
     rendered_messages = render_segment_messages(segment, story.characters, variables)
-    await bot.send_chat_action(message.chat.id, ChatAction.TYPING)
-    await asyncio.sleep(min(max(sum(len(item) for item in rendered_messages) / 700, 0.4), 2.2))
 
     reply_markup = None
     if interaction.get("type") == "choice":
@@ -114,6 +136,13 @@ async def send_segment(
         reply_markup = reply_choice_keyboard(interaction.get("choices", []))
 
     for index, rendered_message in enumerate(rendered_messages):
+        if index > 0:
+            previous_message = rendered_messages[index - 1]
+            await asyncio.sleep(min(max(len(previous_message) / 90, 2.0), 4.0))
+
+        await bot.send_chat_action(message.chat.id, ChatAction.TYPING)
+        await asyncio.sleep(min(max(len(rendered_message) / 700, 0.4), 2.2))
+
         is_last_message = index == len(rendered_messages) - 1
         message_reply_markup = reply_markup if is_last_message else None
         if clear_keyboard and index == 0 and message_reply_markup is None:
@@ -125,9 +154,6 @@ async def send_segment(
         )
         active_messages.append({"chat_id": sent_message.chat.id, "message_id": sent_message.message_id})
 
-    if should_cleanup:
-        await delete_tracked_messages(cleanup_messages)
-
     await run_blocking(
         store.update_vars,
         telegram_id,
@@ -138,7 +164,8 @@ async def send_segment(
     )
 
     if interaction.get("type") == "auto":
-        await asyncio.sleep(float(interaction.get("delay_seconds", 0)))
+        reading_delay = min(max(sum(len(item) for item in rendered_messages) / 350, 5.0), 7.0)
+        await asyncio.sleep(max(float(interaction.get("delay_seconds", 0)), reading_delay))
         await send_segment(message, interaction["target"], player_id=telegram_id)
 
 
