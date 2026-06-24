@@ -58,12 +58,23 @@ acts:
 segments:
   act1_wakeup:
     act: act_1
+    mini_segment: act1_01
     render_mode: html
     messages:
       - type: character
         character: masha
         variant: default
         text: "эй...эй..."
+    interaction:
+      type: auto
+      delay_seconds: 5
+      target: act1_checkup
+
+  act1_checkup:
+    act: act_1
+    mini_segment: act1_02
+    render_mode: html
+    messages:
       - type: placeholder
         label: "видеокружок"
         text: "трясущаяся камера, постепенно проявляется медсестра"
@@ -81,6 +92,7 @@ segments:
 
   act1_repeat_numbers:
     act: act_1
+    mini_segment: act1_02
     render_mode: html
     messages:
       - type: character
@@ -100,6 +112,7 @@ segments:
 
   act1_masha_alive:
     act: act_1
+    mini_segment: act1_02
     render_mode: html
     messages:
       - type: character
@@ -111,16 +124,27 @@ segments:
       choices:
         - id: who_are_you
           label: "кто ты?"
-          target: act1_who_are_you
+          target: act1_masha_intro_response
 
-  act1_who_are_you:
+  act1_masha_intro_response:
     act: act_1
+    mini_segment: act1_02
     render_mode: html
     messages:
       - type: character
         character: masha
         variant: compact
         text: "я? 😷 да так... прохожу тут практику"
+    interaction:
+      type: auto
+      delay_seconds: 2
+      target: act1_lor_arrives
+
+  act1_lor_arrives:
+    act: act_1
+    mini_segment: act1_03
+    render_mode: html
+    messages:
       - type: character
         character: lor
         variant: intro
@@ -142,6 +166,7 @@ segments:
 
   act1_stayed_silent:
     act: act_1
+    mini_segment: act1_03
     render_mode: html
     messages:
       - type: text
@@ -155,12 +180,23 @@ segments:
 
   act1_helped_masha:
     act: act_1
+    mini_segment: act1_03
     render_mode: html
     messages:
       - type: character
         character: lor
         variant: compact
         text: "с чем это? аййй, тьфу на вас, помощники!"
+    interaction:
+      type: auto
+      delay_seconds: 2
+      target: act1_masha_asks_name
+
+  act1_masha_asks_name:
+    act: act_1
+    mini_segment: act1_04
+    render_mode: html
+    messages:
       - type: character
         character: masha
         variant: compact
@@ -172,6 +208,7 @@ segments:
 
   act1_after_name:
     act: act_1
+    mini_segment: act1_04
     render_mode: html
     messages:
       - type: character
@@ -181,6 +218,16 @@ segments:
       - type: placeholder
         label: "достижение"
         text: "Познакомиться с Машей"
+    interaction:
+      type: auto
+      delay_seconds: 2
+      target: act1_queue_entry
+
+  act1_queue_entry:
+    act: act_1
+    mini_segment: act1_05
+    render_mode: html
+    messages:
       - type: character
         character: masha
         variant: compact
@@ -194,6 +241,16 @@ segments:
         character: masha
         variant: compact
         text: "но у него талон на время..."
+    interaction:
+      type: auto
+      delay_seconds: 2
+      target: act1_babusya_stick
+
+  act1_babusya_stick:
+    act: act_1
+    mini_segment: act1_06
+    render_mode: html
+    messages:
       - type: character
         character: babusya
         variant: compact
@@ -205,11 +262,33 @@ segments:
         character: babusya
         variant: compact
         text: "как тресну!"
+    interaction:
+      type: auto
+      delay_seconds: 2
+      target: act1_masha_luck
+
+  act1_masha_luck:
+    act: act_1
+    mini_segment: act1_07
+    render_mode: html
+    messages:
       - type: character
         character: masha
         variant: intro
         label: "удачи"
         text: "да уж... тут я уже не помогу... удачи, {player_name}!)"
+    interaction:
+      type: auto
+      delay_seconds: 2
+      target: act1_babusya_choice
+
+  act1_babusya_choice:
+    act: act_1
+    mini_segment: act1_08
+    render_mode: html
+    messages:
+      - type: text
+        text: "<i>перед вами очередь и очень решительная бабуся</i>"
     interaction:
       type: choice
       choices:
@@ -222,6 +301,7 @@ segments:
 
   act1_argue_babusya:
     act: act_1
+    mini_segment: act1_08
     render_mode: html
     messages:
       - type: text
@@ -235,6 +315,7 @@ segments:
 
   act1_let_babusya_go:
     act: act_1
+    mini_segment: act1_08
     render_mode: html
     messages:
       - type: character
@@ -243,14 +324,13 @@ segments:
         label: "бабуся"
         text: "мило с твоей стороны. знай! милых мир не любит!"
     interaction:
-      type: choice
-      choices:
-        - id: continue
-          label: "осмотреться"
-          target: act1_notice_boy
+      type: auto
+      delay_seconds: 2
+      target: act1_notice_boy
 
   act1_notice_boy:
     act: act_1
+    mini_segment: act1_09
     render_mode: html
     messages:
       - type: text
@@ -260,10 +340,11 @@ segments:
       choices:
         - id: talk_to_boy
           label: "заговорить с мальчиком"
-          target: act1_talk_to_boy
+          target: act1_boy_last
 
-  act1_talk_to_boy:
+  act1_boy_last:
     act: act_1
+    mini_segment: act1_09
     render_mode: html
     messages:
       - type: text
@@ -273,24 +354,50 @@ segments:
         variant: intro
         label: "???"
         text: "а? я? я? я последний!"
+    interaction:
+      type: reply_choice
+      choices:
+        - id: ask_why
+          label: "да я не спрашивал"
+          target: act1_boy_why
+
+  act1_boy_why:
+    act: act_1
+    mini_segment: act1_09
+    render_mode: html
+    messages:
       - type: text
         text: "{player_name} - да я не спрашивал... ты чего трясешься?"
+    interaction:
+      type: auto
+      delay_seconds: 1
+      target: act1_boy_zine_broken
+
+  act1_boy_zine_broken:
+    act: act_1
+    mini_segment: act1_10
+    render_mode: html
+    messages:
       - type: character
         character: boy
         variant: compact
         text: "мой... зин... он совсем порвался! он расклеился и все странички рассыпались! мне... мне нужен реабилитолог! мне нужно залечить мой зин!"
-      - type: placeholder
-        label: "фото"
-        text: "порванный зин"
       - type: text
         text: "{player_name} - эту книжку что ли?"
       - type: character
         character: boy
         variant: compact
         text: "это совсем-совсем не книжка! в книжках пишут о всяких героях, злодеях... а зин! зин он про меня! смотри, здесь есть все: вот страничка про мои любимые машины! вот про футболистов! вот сюда я вклеил несколько цветов, их любит моя сестра! зин - это совсем не книжка!"
-      - type: placeholder
-        label: "серия фото"
-        text: "страницы зина: машины, футболисты, цветы"
+    interaction:
+      type: auto
+      delay_seconds: 2
+      target: act1_boy_teach
+
+  act1_boy_teach:
+    act: act_1
+    mini_segment: act1_11
+    render_mode: html
+    messages:
       - type: text
         text: "{player_name} - ты его сам собрал? научишь?"
       - type: character
@@ -306,6 +413,7 @@ segments:
 
   act1_end:
     act: act_1
+    mini_segment: act1_12
     render_mode: html
     messages:
       - type: text
