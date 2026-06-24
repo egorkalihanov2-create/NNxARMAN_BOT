@@ -44,6 +44,9 @@ def render_message(message: dict[str, Any], characters: dict[str, Any], variable
     if message_type == "placeholder":
         return render_placeholder(message, variables)
 
+    if message_type == "player_line":
+        return render_player_line(message, variables)
+
     raise ValueError(f"Unknown message type: {message_type}")
 
 
@@ -115,6 +118,11 @@ def render_placeholder(message: dict[str, Any], variables: dict[str, Any]) -> st
         return f"<i>[{escape(label)}: {escape(text)}]</i>"
 
     return f"<i>[{escape(label)}]</i>"
+
+
+def render_player_line(message: dict[str, Any], variables: dict[str, Any]) -> str:
+    text = apply_template(message.get("text", ""), variables, escape_values=True)
+    return f"- {text}"
 
 
 def apply_template(text: str, variables: dict[str, Any], escape_values: bool = False) -> str:
